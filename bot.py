@@ -13,13 +13,13 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-# 🔥 ИСПРАВЛЕНО: берем JSON из Render (переменной)
+# берём JSON из Render
 creds_dict = json.loads(os.getenv("GOOGLE_CREDENTIALS"))
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 
 client = gspread.authorize(creds)
-
 sheet = client.open("points").sheet1
+
 print("ТАБЛИЦА ПОДКЛЮЧЕНА")
 
 # ---------- DISCORD ----------
@@ -28,8 +28,11 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# хранение поинтов по сообщениям
+# хранение поинтов
 message_points = {}
+
+# 🔥 защита от дублей
+processed_messages = set()
 
 # ---------- ФУНКЦИИ ----------
 def add_points(user, amount):
@@ -86,6 +89,12 @@ async def on_ready():
 async def on_message(message):
     if message.author.bot:
         return
+
+    # ❗ защита от дублей
+    if message.id in processed_messages:
+        return
+
+    processed_messages.add(message.id)
 
     channel = message.channel.name.lower()
     mentions = message.mentions
