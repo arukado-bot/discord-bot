@@ -68,7 +68,7 @@ def remove_points(user_id, amount):
 
 def get_channel_settings(channel):
     if channel == "mass-up":
-        return 15, 4   # 🔥 ИЗМЕНЕНО (было 10)
+        return 15, 4
     elif channel == "pve":
         return 5, 2
     elif channel == "pvp":
@@ -166,21 +166,19 @@ async def on_message_edit(before, after):
                 message_points[after.id][user.id] = pts
 
 
-# ---------- ПРОВЕРКА ДОСТУПА ДЛЯ ВСЕХ КОМАНД ----------
-async def check_access(ctx):
-    return has_role(ctx.author)
-
-
 # ---------- КОМАНДЫ ----------
 @bot.command()
-@commands.check(check_access)
 async def ping(ctx):
+    if not has_role(ctx.author):
+        return
     await ctx.send("pong")
 
 
 @bot.command()
-@commands.check(check_access)
 async def points(ctx):
+    if not has_role(ctx.author):
+        return
+
     data = sheet.get_all_values()
 
     text = ""
@@ -195,26 +193,22 @@ async def points(ctx):
 
 
 @bot.command()
-@commands.check(check_access)
 async def add(ctx, member: discord.Member, amount: int):
+    if not has_role(ctx.author):
+        return
+
     add_points(member, amount)
     await ctx.send(f"+{amount} {member.name}")
 
 
 @bot.command()
-@commands.check(check_access)
 async def reset(ctx):
+    if not has_role(ctx.author):
+        return
+
     sheet.clear()
     sheet.append_row(["user_id", "username", "points"])
     await ctx.send("Сброшено")
-
-
-# ---------- ОБРАБОТКА ОШИБОК (чтобы молчал) ----------
-@bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, commands.CheckFailure):
-        return  # ничего не отвечает
-    raise error
 
 
 # ---------- ЗАПУСК ----------
