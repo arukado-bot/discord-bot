@@ -13,7 +13,6 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-# берём JSON из Render
 creds_dict = json.loads(os.getenv("GOOGLE_CREDENTIALS"))
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 
@@ -28,11 +27,13 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# хранение поинтов
 message_points = {}
-
-# 🔥 защита от дублей
 processed_messages = set()
+
+# ---------- РОЛИ ----------
+def has_role(member):
+    allowed_roles = ["Глава Гильдии", "Зам Главы", "Офицер", "Консул"]
+    return any(role.name in allowed_roles for role in member.roles)
 
 # ---------- ФУНКЦИИ ----------
 def add_points(user, amount):
@@ -90,7 +91,6 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    # ❗ защита от дублей
     if message.id in processed_messages:
         return
 
@@ -122,6 +122,9 @@ async def on_message_edit(before, after):
     if after.author.bot:
         return
 
+    if before.content == after.content:
+        return
+
     channel = after.channel.name.lower()
     min_count, pts = get_channel_settings(channel)
 
@@ -136,32 +139,27 @@ async def on_message_edit(before, after):
 
     message_points.setdefault(after.id, {})
 
-    # ❗ если упали ниже минимума → убрать всем
     if before_count >= min_count and after_count < min_count:
         for user_id, amount in message_points[after.id].items():
             remove_points(user_id, amount)
         message_points[after.id].clear()
         return
 
-    # ❗ если достигли минимума → дать всем
     if before_count < min_count and after_count >= min_count:
         for user in after.mentions:
             add_points(user, pts)
             message_points[after.id][user.id] = pts
         return
 
-    # ❗ если уже выше минимума
     if after_count >= min_count:
         removed = before_ids - after_ids
         added = after_ids - before_ids
 
-        # убрать поинты
         for uid in removed:
             if uid in message_points[after.id]:
                 remove_points(uid, pts)
                 del message_points[after.id][uid]
 
-        # добавить поинты
         for user in after.mentions:
             if user.id in added:
                 add_points(user, pts)
@@ -190,15 +188,21 @@ async def points(ctx):
 
 
 @bot.command()
-@commands.has_permissions(administrator=True)
 async def add(ctx, member: discord.Member, amount: int):
+    if not has_role(ctx.author):
+        await ctx.send("❌ У тебя нет прав")
+        return
+
     add_points(member, amount)
     await ctx.send(f"+{amount} {member.name}")
 
 
 @bot.command()
-@commands.has_permissions(administrator=True)
 async def reset(ctx):
+    if not has_role(ctx.author):
+        await ctx.send("❌ У тебя нет прав")
+        return
+
     sheet.clear()
     sheet.append_row(["user_id", "username", "points"])
     await ctx.send("Сброшено")
