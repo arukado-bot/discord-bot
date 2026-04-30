@@ -30,10 +30,11 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 message_points = {}
 processed_messages = set()
 
-# ---------- РОЛИ ----------
+# ---------- РОЛИ (без учета регистра) ----------
 def has_role(member):
-    allowed_roles = ["Глава Гильдии", "Зам Главы", "Офицер", "Консул"]
-    return any(role.name in allowed_roles for role in member.roles)
+    allowed_roles = ["глава гильдии", "зам главы", "офицер", "консул"]
+    user_roles = [role.name.lower() for role in member.roles]
+    return any(role in user_roles for role in allowed_roles)
 
 # ---------- ФУНКЦИИ ----------
 def add_points(user, amount):
